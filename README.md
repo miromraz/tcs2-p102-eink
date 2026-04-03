@@ -1,60 +1,41 @@
-# TCS2-P102 E-Ink Display Driver
+# TCS2-P102 E-Ink Display Test
 
-ESP32-S3 firmware for driving a 10.2" 1024x1280 monochrome e-ink display via the MpicoSys TCS2-P102-231 timing controller.
+Getting a 10.2" 1024x1280 monochrome e-ink display working with the MpicoSys TCS2-P102-231 timing controller, using a Raspberry Pi Pico.
 
 ## Hardware
 
-- **MCU**: Seeed Studio XIAO ESP32-S3 Sense
+- **MCU**: Raspberry Pi Pico (RP2040)
 - **Display**: EZ102CT011 (10.2", 1024x1280, 1-bit B&W, Pervasive Displays / E Ink Vizplex)
 - **Controller**: TCS2-P102-231 v1.1 (MpicoSys Generation 2 timing controller)
 - **Interface**: SPI Mode 3, 1 MHz
 
 ## Wiring
 
-Connect the XIAO ESP32-S3 to the TCS2 controller board's 10-pin header:
+Connect the Pico to the TCS2 controller board's 10-pin header:
 
-| XIAO Pin | GPIO | TCS2 Pin | Function |
+| Pico Pin | GPIO | TCS2 Pin | Function |
 |----------|------|----------|----------|
-| D8 | GPIO7 | SCK | SPI Clock |
-| D10 | GPIO9 | MOSI | SPI Data Out |
-| D9 | GPIO8 | MISO | SPI Data In |
-| D0 | GPIO1 | CS | Chip Select (active LOW) |
-| D1 | GPIO2 | BUSY | Controller Status (HIGH = ready) |
-| D2 | GPIO3 | EN | Enable (active LOW) |
-| 3V3 | - | VDDIN | 3.3V Digital Power |
+| Pin 14 | GPIO10 | SCK | SPI1 Clock |
+| Pin 15 | GPIO11 | MOSI | SPI1 TX |
+| Pin 16 | GPIO12 | MISO | SPI1 RX |
+| Pin 17 | GPIO13 | CS | Chip Select (active LOW) |
+| Pin 21 | GPIO16 | BUSY | Controller Status (HIGH = ready) |
+| Pin 22 | GPIO17 | EN | Enable (active LOW) |
+| 3V3 OUT | - | VDDIN | 3.3V Digital Power |
 | GND | - | GND | Ground |
 
 The TCS2 controller also needs analog power (VIN, 2.0-5.5V) which can share the same 3.3V supply or use a separate source.
 
-## Building and Flashing
+## Flashing the Pico
 
-Requires [PlatformIO](https://platformio.org/).
+The test firmware is in `pico_eink_test/pico_eink_test.ino`. Flash it using Arduino IDE:
 
-```bash
-# Build
-pio run
+1. Install the [Arduino-Pico](https://github.com/earlephilhower/arduino-pico) board package
+2. Select **Raspberry Pi Pico** as the board
+3. Open `pico_eink_test/pico_eink_test.ino`
+4. Upload (hold BOOTSEL on the Pico if it's the first flash)
 
-# Flash (connect XIAO via USB)
-pio run -t upload
-
-# If the board isn't detected, enter bootloader mode:
-# Hold BOOT, press RESET, release BOOT
-# Then retry upload
-
-# Monitor serial output
-pio device monitor
-```
-
-The serial port will typically be `/dev/ttyACM0` on Linux (USB CDC).
-
-## What It Does
-
-On boot the firmware:
-
-1. Initializes the TCS2 controller over SPI
-2. Queries and prints device info to serial (verifies SPI communication works)
-3. Draws a checkerboard test pattern on the display
-4. Prints `EINK_READY` and waits for serial commands
+Open the serial monitor at **115200 baud**. You should see `EINK_READY` once the controller initializes.
 
 ## Uploading Images
 
@@ -85,13 +66,13 @@ The script converts any image (PNG, JPG, BMP, etc.) to 1-bit dithered 1024x1280,
 
 Total upload: 163,856 bytes (16-byte EPD header + 163,840 image bytes).
 
-## Library
-
-Uses the [Arduino-TCM2](https://github.com/oxullo/Arduino-TCM2) library (included in `lib/`) with one ESP32 compatibility fix (`#include <Arduino.h>` added to `TCM2.cpp`).
-
 ## Troubleshooting
 
-- **Board not detected**: Enter bootloader mode (BOOT + RESET). Check `lsusb` for Espressif device.
-- **SPI errors (0x6F00)**: Check wiring, especially CS and BUSY. Verify 3.3V power to TCS2.
-- **No serial output**: The XIAO ESP32-S3 uses USB CDC. Give it 2 seconds after reset before opening the monitor.
+- **SPI errors (response not 0x9000)**: Check wiring, especially CS and BUSY. Verify 3.3V power to TCS2.
+- **TIMEOUT during upload**: Reduce serial baud rate or add flow control. Check USB cable is data-capable.
 - **Display doesn't refresh**: The BUSY pin must be connected. The controller signals readiness through this pin.
+- **All black / all white**: Try `--invert` flag with `upload_image.py`. Ensure the EPD header matches your panel (0x3D = 10.2").
+
+## Next Steps
+
+See [DASHBOARD.md](DASHBOARD.md) for the ESP32-S3 port and Victron/weather dashboard roadmap.
